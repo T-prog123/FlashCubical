@@ -1,8 +1,9 @@
 # CMake build artifacts
-build/
+build*/
 _skbuild/
+CMakeUserPresets.json
 
-# Compiled Python extensions
+# Compiled Python/native extensions
 *.pyd
 *.so
 *.dll
@@ -22,6 +23,16 @@ __pycache__/
 
 # Distribution
 dist/
+wheelhouse/
+
+# Local generated arrays / validation scratch
+*.npy
+
+# Local reference copy of the previous package version
+flash_cubical_v2_python/
+
+# Local developer-only tools and notes, not part of the Python package repo
+dev/
 
 # Editor / OS
 .vscode/

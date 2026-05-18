@@ -29,4 +29,4 @@ MaskBuild3D build_masks3d(const double* values,
                           std::size_t cols,
                           const std::uint32_t* value_codes = nullptr);
 
-}
+} // namespace zero_lookup

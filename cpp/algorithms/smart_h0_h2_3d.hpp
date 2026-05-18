@@ -129,7 +129,10 @@ struct H1Profile {
     std::size_t max_rewrite_terms_read = 0;
     std::size_t max_column_terms_before_xor = 0;
 
+    // Column size before XOR at each rewrite hit (buckets: 0,1,2,3,4-5,6-9,
+    // 10-15,16-31,32-63,64-127,128-511,512+)
     std::array<std::size_t, 12> xor_col_size_hist{};
+    // Rewrite-row size at each XOR (buckets: 0,1,2,3,4-7,8-15,16-63,64+)
     std::array<std::size_t, 8>  xor_row_size_hist{};
 
     std::size_t rewrite_rows = 0;
@@ -147,6 +150,7 @@ struct H1Result {
     std::size_t zero_persistence_pairs = 0;
     std::size_t reduction_steps = 0;
     std::size_t max_reduced_boundary_size = 0;
+    // Lookup zero-persistence H1 counters.
     std::size_t h1_zero_squares_skipped_outer = 0;
     std::size_t h1_zero_rewrites_materialised = 0;
     std::size_t h1_zero_rewrite_cache_hits = 0;
@@ -311,4 +315,4 @@ inline FullResult compute(const double* values,
         .run();
 }
 
-}
+} // namespace smart_h0_h2_3d

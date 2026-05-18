@@ -2,6 +2,14 @@ import numpy as np
 
 
 class Persistence:
+    """Cubical persistence diagram.
+
+    Attributes
+    ----------
+    values : ndarray of shape (n, 3), dtype float64
+        Columns: birth, death, homology dimension.
+        Essential classes (connected components) have death = +inf.
+    """
 
     def __init__(self, values: np.ndarray) -> None:
         arr = np.asarray(values, dtype=np.float64)
@@ -13,6 +21,7 @@ class Persistence:
 
     @property
     def values(self) -> np.ndarray:
+        """float64 array of shape (n, 3): birth, death, dimension."""
         return self._values
 
     def __array__(self, dtype=None):
@@ -27,6 +36,19 @@ class Persistence:
         return f"Persistence({n} pairs [{dim_str}])"
 
     def plot(self, ax=None):
+        """Plot the persistence diagram (birth vs death, coloured by dimension).
+
+        Infinite-death pairs (essential classes) are omitted from the scatter.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes, optional
+            Axes to draw on; created if not provided.
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+        """
         import matplotlib.pyplot as plt
 
         _COLORS = {0: "tab:blue", 1: "tab:orange", 2: "tab:green"}

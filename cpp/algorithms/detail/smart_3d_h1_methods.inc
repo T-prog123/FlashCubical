@@ -123,6 +123,23 @@
         return positive_terms;
     }
 
+    // -----------------------------------------------------------------------
+    // Combined pivot map encoding (indexed by H1Term / EdgeCode).
+    //
+    //   bits 31-30 = 00, val < 0x40000000:
+    //                    stored rewrite row at rewrite_meta index val
+    //   bits 31-30 = 01, pm_in_prog_flag <= val < pm_zero_sq_flag:
+    //                    materialisation in progress for sq_index = val & pm_sq_mask
+    //   bits 31-30 = 10, pm_zero_sq_flag <= val < pm_no_info:
+    //                    unmaterialised zero square at sq_index = val & pm_sq_mask
+    //   0xFFFFFFFF (pm_no_info): not a zero pair, no stored row → genuine new pivot
+    //
+    // The in-progress state encodes dep_sq so that the hot loop can still
+    // check dep_sq == current_square for the own-pivot termination case.
+    //
+    // H1RewriteRow packs offset + length for a single cache-line load instead
+    // of two separate SoA arrays.
+    // -----------------------------------------------------------------------
     static constexpr std::uint32_t pm_no_info      = 0xFFFFFFFFu;
     static constexpr std::uint32_t pm_zero_sq_flag = 0x80000000u;
     static constexpr std::uint32_t pm_in_prog_flag = 0x40000000u;
@@ -133,6 +150,7 @@
         std::uint32_t length;
     };
 
+    // Non-demand column reduction — only uses pre-existing rows in pivot_map.
     void h1_reduce_column(
         std::vector<H1Term>& column,
         const std::vector<std::uint32_t>& pivot_map,
@@ -877,6 +895,9 @@
                          rewrite_terms, result);
     }
 
+    // -----------------------------------------------------------------------
+    // Miscellaneous sentinels kept for non-production code paths.
+    // -----------------------------------------------------------------------
     static constexpr bool h1_lookup_use_template_zero_rows = false;
     static constexpr bool h1_lookup_use_template_nonzero_columns = false;
 
@@ -886,6 +907,11 @@
         std::size_t depth = 0;
     };
 
+    // -----------------------------------------------------------------------
+    // Build pivot_map from the zero-lookup table.  For each confirmed zero-pair
+    // (edge e, square s), encodes pivot_map[e] = pm_zero_sq_flag | s so that
+    // the hot-loop recognises it as an unmaterialised zero square in one load.
+    // -----------------------------------------------------------------------
     void h1_build_zero_pivot_map(
             std::vector<std::uint32_t>& pivot_map) const {
         for (std::size_t v = 0; v < n_vertices_; ++v) {
@@ -978,6 +1004,13 @@
         return false;
     }
 
+    // -----------------------------------------------------------------------
+    // Hot-path demand column reduction.
+    //
+    // Single pivot_map lookup per iteration replaces three separate array
+    // reads (rewrite_index + zero_pivot_to_sq + zero_pivot_state).
+    // H1RewriteRow AoS loads offset+length in one cache line instead of two.
+    // -----------------------------------------------------------------------
     void h1_reduce_column_demand_template(
             std::vector<H1Term>& column,
             std::vector<std::uint32_t>& pivot_map,
@@ -996,6 +1029,7 @@
             }
 
             if (pm < pm_in_prog_flag) {
+                // Path 1: stored row already exists — XOR it in.
                 column.pop_back();
                 const H1RewriteRow& row = rewrite_meta[pm];
                 const std::size_t col_before = column.size();
@@ -1048,10 +1082,14 @@
                 continue;
             }
 
+            // pm >= pm_in_prog_flag: in-progress, unmaterialised, or pm_no_info.
+            // dep_sq is encoded in the low 30 bits for both in-progress and
+            // unmaterialised states, enabling the own-pivot termination check.
             const SquareCode dep_sq =
                 static_cast<SquareCode>(pm & pm_sq_mask);
 
             if (pm < pm_zero_sq_flag) {
+                // In-progress: dep_sq == current_square is the own-pivot case.
                 if (dep_sq == current_square) {
                     break;
                 }
@@ -1066,6 +1104,7 @@
                 break; // genuine new pivot
             }
 
+            // Path 2: unmaterialised zero square.
             const EdgeCode pivot_edge = h1_edge(pivot_term);
             if (dep_sq == current_square) {
                 break;
@@ -1131,10 +1170,12 @@
 
         const std::uint32_t pm_init = pivot_map[pivot_idx];
         if (pm_init < pm_in_prog_flag) {
+            // Already materialised (row stored by a previous call).
             ++result.h1_zero_rewrite_cache_hits;
             return;
         }
         if (pm_init < pm_zero_sq_flag) {
+            // pm_in_prog_flag <= pm_init < pm_zero_sq_flag: in-progress.
             ++result.h1_zero_materialisation_failures;
             throw std::logic_error(
                 "template H1 materialisation called on in-progress row");
@@ -1144,6 +1185,7 @@
             throw std::logic_error(
                 "template H1 materialisation called on non-zero-pair edge");
         }
+        // Mark in-progress, preserving dep_sq for cycle detection.
         pivot_map[pivot_idx] =
             pm_in_prog_flag |
             static_cast<std::uint32_t>(square & pm_sq_mask);
@@ -1367,6 +1409,10 @@
                 "3D H1 matching currently expects edge ids to fit in uint32");
         }
 
+        // Combined pivot map: replaces rewrite_index (12 MB) +
+        // zero_pivot_to_sq (12 MB) + zero_pivot_state (3 MB) with a single
+        // 12 MB array.  Initialised to pm_no_info; zero-pair entries are
+        // populated by h1_build_zero_pivot_map.
         std::vector<std::uint32_t> pivot_map(edge_storage, pm_no_info);
         h1_build_zero_pivot_map(pivot_map);
 
@@ -1404,6 +1450,7 @@
                   });
         result.timing.sorting_ms = elapsed_ms(sort_start, Clock::now());
 
+        // AoS rewrite metadata: replaces separate rewrite_offsets + rewrite_lengths.
         std::vector<H1RewriteRow> rewrite_meta;
         std::vector<H1Term> rewrite_terms;
         rewrite_meta.reserve(expected_rewrites);

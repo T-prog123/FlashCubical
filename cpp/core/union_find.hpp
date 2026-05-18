@@ -43,4 +43,4 @@ struct UnionFind {
     }
 };
 
-}
+} // namespace smart_core

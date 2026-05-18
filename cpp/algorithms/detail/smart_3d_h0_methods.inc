@@ -187,6 +187,15 @@
         const auto sweep_start = Clock::now();
         h0_sweep(active_vertices, non_apparent_mask.get(), result);
         result.timing.union_find_sweep_ms = elapsed_ms(sweep_start, Clock::now());
+
+        const auto final_start = Clock::now();
+        const std::size_t oldest = oldest_vertex();
+        const std::size_t surviving_root =
+            h0_parent_.find(static_cast<VertexCode>(oldest));
+        result.pairs.push_back(
+            {values_[surviving_root],
+             std::numeric_limits<double>::infinity()});
+        result.timing.finalization_ms = elapsed_ms(final_start, Clock::now());
         result.timing.total_ms = elapsed_ms(total_start, Clock::now());
 
         result.memory.parent_bytes = n_vertices_ * sizeof(VertexCode);

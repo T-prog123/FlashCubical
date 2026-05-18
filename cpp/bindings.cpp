@@ -6,17 +6,18 @@
 #include "zero_lookup/runtime/mask_build.hpp"
 #include "zero_lookup/runtime/zero_table.hpp"
 
-#include <algorithm>
 #include <array>
-#include <limits>
-#include <mutex>
+#include <filesystem>
 #include <string>
 #include <vector>
 
 namespace py = pybind11;
 
-static std::once_flag g_init_2d;
-static std::once_flag g_init_3d;
+static void _initialize_lookup_tables(const std::string& path2d,
+                                      const std::string& path3d) {
+    zero_lookup::load_zero_tables(std::filesystem::path(path2d),
+                                  std::filesystem::path(path3d));
+}
 
 static py::array_t<double> _compute(
     py::array_t<double, py::array::c_style | py::array::forcecast> x,
@@ -40,14 +41,14 @@ static py::array_t<double> _compute(
     std::vector<std::array<double, 3>> pairs;
 
     if (ndim == 2) {
-        std::call_once(g_init_2d, []() { zero_lookup::warm_zero_table2d(); });
+        zero_lookup::warm_zero_table2d();
 
         const std::size_t rows = static_cast<std::size_t>(buf.shape[0]);
         const std::size_t cols = static_cast<std::size_t>(buf.shape[1]);
         pairs = cubicalp_native::compute_2d_all(values, rows, cols);
 
     } else {
-        std::call_once(g_init_3d, []() { zero_lookup::warm_zero_table3d(); });
+        zero_lookup::warm_zero_table3d();
 
         const std::size_t depth = static_cast<std::size_t>(buf.shape[0]);
         const std::size_t rows  = static_cast<std::size_t>(buf.shape[1]);
@@ -58,10 +59,10 @@ static py::array_t<double> _compute(
 
         smart_h0_h2_3d::FullResult result = smart_h0_h2_3d::compute(
             values, depth, rows, cols,
-            false,
-            nullptr,
-            h1,
-            false,
+            /*include_apparent_zero_pairs=*/false,
+            /*value_codes=*/nullptr,
+            /*compute_h1=*/h1,
+            /*profile_h1=*/false,
             masks.masks.data());
 
         pairs.reserve(
@@ -71,13 +72,6 @@ static py::array_t<double> _compute(
 
         for (const auto& p : result.h0.pairs) {
             pairs.push_back({p.birth, p.death, 0.0});
-        }
-        {
-            const std::size_t n_verts = depth * rows * cols;
-            const double birth = *std::min_element(values, values + n_verts);
-            pairs.push_back({birth,
-                             std::numeric_limits<double>::infinity(),
-                             0.0});
         }
         if (result.h1_computed) {
             for (const auto& p : result.h1.pairs) {
@@ -102,6 +96,9 @@ static py::array_t<double> _compute(
 
 PYBIND11_MODULE(_core, m) {
     m.doc() = "Cubical persistent homology – C++ backend";
+    m.def("initialize_lookup_tables", &_initialize_lookup_tables,
+          py::arg("path2d"), py::arg("path3d"),
+          "Load packaged zero lookup tables from explicit file paths.");
     m.def("compute", &_compute,
           py::arg("x"), py::arg("h1"),
           "Compute cubical persistence pairs.\n\n"

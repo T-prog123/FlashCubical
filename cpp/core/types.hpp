@@ -34,4 +34,4 @@ struct MemoryProfile {
     }
 };
 
-}
+} // namespace smart_core

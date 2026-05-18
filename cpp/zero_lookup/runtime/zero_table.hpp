@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <vector>
 
 namespace zero_lookup {
@@ -91,28 +92,48 @@ struct Entry3D {
     std::uint16_t h2_residual_square_mask = 0;
 
     std::uint8_t direct_h0_edge = 0xffu;
+    // All locally-resolved zero-persistence H1 pairs at this vertex (apparent
+    // and non-apparent).  Each pair (edge, square) satisfies: edge is
+    // H1-positive, square is H1-negative, and both share birth vertex v.
     std::uint8_t zero_h1_count = 0;
     std::uint8_t direct_h2_count = 0;
     std::array<Direct3DH1Pair, 12> zero_h1_pairs{};
+    // H1 local templates for lookup-mode eager sparse reduction.
+    // h1_square_semireduced_boundary[s] is the local edge mask obtained after
+    // reducing square s by earlier local zero H1 rows. For local zero pairs it
+    // still includes the pivot edge. zero_h1_rewrite_masks[i] is aligned with
+    // zero_h1_pairs[i] and stores that row with its pivot removed.
     std::array<std::uint8_t, 12> h1_square_semireduced_boundary{};
+    // Local zero-square rows whose non-local boundary terms are part of the
+    // same semi-reduced expression above. Bit j means local square j was
+    // substituted an odd number of times during the local H1 reduction.
     std::array<std::uint16_t, 12> h1_square_substitution_square_mask{};
     std::array<std::uint8_t, 12> zero_h1_rewrite_masks{};
     std::array<Direct3DH2Pair, 8> direct_h2_pairs{};
 
+    // Part II.a: lookup-owned local ordering metadata.
+    // All ranks are 0-based within the present cells at this vertex.
+    // Absent cells have rank 0xffu and order slots filled with 0xffu.
     std::uint8_t edge_count = 0;
     std::uint8_t square_count = 0;
     std::uint8_t cube_count = 0;
     std::array<std::uint8_t, 6>  edge_second_rank{};
     std::array<std::uint8_t, 12> square_second_rank{};
     std::array<std::uint8_t, 8>  cube_second_rank{};
+    // Birth cells: edge with max edge_id among local boundary edges of a square;
+    // square with max square_less_3d among local boundary squares of a cube.
     std::array<std::uint8_t, 12> square_birth_local_edge{};
     std::array<std::uint8_t, 8>  cube_birth_local_square{};
+    // Cells in ascending (oldest→youngest) and descending order.
     std::array<std::uint8_t, 6>  edge_order_asc{};
     std::array<std::uint8_t, 6>  edge_order_desc{};
     std::array<std::uint8_t, 12> square_order_asc{};
     std::array<std::uint8_t, 12> square_order_desc{};
     std::array<std::uint8_t, 8>  cube_order_asc{};
     std::array<std::uint8_t, 8>  cube_order_desc{};
+    // Survivor cells (not H0/H1/H2 paired) in ascending/descending order.
+    // residual_square_*: based on survivor_square_mask.
+    // h2_residual_square_*: based on h2_residual_square_mask (operational H2 residual).
     std::uint8_t residual_edge_asc_count = 0;
     std::uint8_t residual_edge_desc_count = 0;
     std::uint8_t residual_square_asc_count = 0;
@@ -131,6 +152,13 @@ const Entry2D& lookup2d(std::uint8_t mask);
 const Entry3D& lookup3d(std::uint32_t mask26);
 std::size_t    entry3d_count();
 const Entry3D& entry3d_at(std::size_t idx);
+void load_zero_table2d(const std::filesystem::path& path);
+void load_zero_table3d(const std::filesystem::path& path);
+void load_zero_tables(const std::filesystem::path& path2d,
+                      const std::filesystem::path& path3d);
+void load_zero_tables_from_directory(const std::filesystem::path& dir);
+bool zero_table2d_loaded();
+bool zero_table3d_loaded();
 
 inline std::uint8_t direct_h0_edge2d(std::uint8_t edge_mask) {
     if ((edge_mask & (1u << edge2_n)) != 0) {
@@ -232,4 +260,4 @@ void warm_zero_table3d();
 void warm_zero_tables();
 Table3DStats table3d_stats();
 
-}
+} // namespace zero_lookup

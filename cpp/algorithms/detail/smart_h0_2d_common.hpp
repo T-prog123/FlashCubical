@@ -73,4 +73,4 @@ inline std::size_t edge_state_storage_size(std::size_t rows, std::size_t cols) {
     return 2 * rows * cols;
 }
 
-}
+} // namespace smart_h0

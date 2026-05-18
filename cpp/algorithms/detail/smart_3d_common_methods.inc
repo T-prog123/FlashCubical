@@ -118,6 +118,16 @@
         return vertex_less(b, a);
     }
 
+    std::size_t oldest_vertex() const {
+        std::size_t best = 0;
+        for (std::size_t v = 1; v < n_vertices_; ++v) {
+            if (vertex_less(v, best)) {
+                best = v;
+            }
+        }
+        return best;
+    }
+
     EdgeCode pack_edge(std::size_t source, unsigned dir) const {
         return static_cast<EdgeCode>(3u * source + dir);
     }

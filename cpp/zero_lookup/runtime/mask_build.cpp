@@ -129,7 +129,7 @@ void propagate_offset3d(std::vector<std::uint32_t>& masks,
     }
 }
 
-}
+} // namespace
 
 MaskBuild2D build_masks2d(const double* values,
                           std::size_t rows,
@@ -206,4 +206,4 @@ MaskBuild3D build_masks3d(const double* values,
     return out;
 }
 
-}
+} // namespace zero_lookup
