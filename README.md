@@ -14,8 +14,8 @@ Requirements
 ## Installation
 
 ```
-git clone <repo-url>
-cd flash\\\_cubical
+git clone git@github.com:T-prog123/FlashCubical.git
+cd FlashCubical
 pip install -e .
 ```
 
@@ -24,7 +24,7 @@ That is all. pip compiles the C++ extension automatically.
 ## Usage
 
 ```python
-import flash\\\_cubical as fc
+import flash_cubical as fc
 import numpy as np
 
 image = np.random.rand(256, 256)      # 2D scalar field
@@ -46,12 +46,12 @@ ph = fc.compute(volume, h1=False)     # skip H1, only H0 and H2
 
 ## API
 
-### `fc.compute(x, min\\\_persistence=0.0, h1=True)`
+### `fc.compute(x, min_persistence=0.0, h1=True)`
 
 |Parameter|Description|
 |-|-|
 |`x`|2D or 3D array-like, converted to float64|
-|`min\\\_persistence`|Minimal distance between birth and death values. Must be non-negative.|
+|`min_persistence`|Minimal distance between birth and death values. Must be non-negative.|
 |`h1`|Compute H1. Must be `True` for 2D inputs. Can be `False` for 3D to skip H1|
 
 Returns a `Persistence` object.
