@@ -1,0 +1,30 @@
+# CMake build artifacts
+build/
+_skbuild/
+
+# Compiled Python extensions
+*.pyd
+*.so
+*.dll
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Editable install artifacts
+*.egg-info/
+*.dist-info/
+.eggs/
+
+# Pytest
+.pytest_cache/
+
+# Distribution
+dist/
+
+# Editor / OS
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
