@@ -1,6 +1,6 @@
 # FlashCubical
 
-Fast V-filtration cubical persistent homology for 2D and 3D scalar grids induced by images.
+Fast V-filtration cubical persistent homology for 2D and 3D scalar grids induced by images, impleneting the ideas proposed in https://arxiv.org/abs/2606.04801.
 
 Computes H0 (connected components), H1 (loops / tunnels), and H2 (voids) using a lower-star filtration with a precomputed lookup table for local zero-persistence pairs.
 
